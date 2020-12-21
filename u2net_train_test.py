@@ -133,7 +133,6 @@ for epoch in range(epochs):
         loss5_all += loss5.detach().cpu().numpy() * images.size(0)
         loss6_all += loss6.detach().cpu().numpy() * images.size(0)
         total += images.size(0)
-    #TODO: SHOW ALL LOSS
     if scheduler is not None:
         scheduler.step(loss_all / total)
     print('[epoch {}|{}]: loss = {}, loss0 = {}, loss1 = {}, loss2 = {}, loss3 = {}, loss4 = {}, loss5 = {}, loss6 = {}, lr = {}'.format(epoch + 1, epochs, loss_all / total, loss0_all / total, loss1_all / total, loss2_all / total, loss3_all / total, loss4_all / total, loss5_all / total, loss6_all / total, optimizer.state_dict()['param_groups'][0]['lr']))
