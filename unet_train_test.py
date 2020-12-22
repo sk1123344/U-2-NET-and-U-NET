@@ -3,11 +3,9 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import os
 import cv2
-from u2net import U2NET
 from unet import UNET
 import pandas as pd
 import numpy as np
-from torch.utils.data.distributed import DistributedSampler
 
 
 def save_images(image_tensor, mask_path_, save_path):
@@ -33,18 +31,10 @@ def iou_calculation_save(image_tensor, target, mask_path_, save_path):
         df.to_csv(txt_path, sep=' ', index=False, header=False)
 
 
-def bce_loss_all(d0, d1, d2, d3, d4, d5, d6, target):
+def bce_loss_all(out, target):
     criterion = nn.BCELoss()
-    loss0 = criterion(d0, target)
-    loss1 = criterion(d1, target)
-    loss2 = criterion(d2, target)
-    loss3 = criterion(d3, target)
-    loss4 = criterion(d4, target)
-    loss5 = criterion(d5, target)
-    loss6 = criterion(d6, target)
-    loss = loss0 + loss1 + loss2 + loss3 + loss4 + loss5 + loss6
-
-    return loss0, loss, loss1, loss2, loss3, loss4, loss5, loss6
+    loss = criterion(out, target)
+    return loss
 
 
 class DataInput(Dataset):
@@ -90,7 +80,7 @@ num_workers = 2
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 train_data_loader = DataLoader(DataInput(train_data_path, train_mask_path), shuffle=True, num_workers=num_workers, batch_size=batch_size)
 test_data_loader = DataLoader(DataInput(test_data_path, test_mask_path), shuffle=False, num_workers=num_workers, batch_size=1)
-model = U2NET()
+model = UNET()
 m = model
 if torch.cuda.device_count() > 1:
     model = nn.DataParallel(model)
@@ -99,48 +89,33 @@ model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters())
 #optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode='min', factor=0.99, patience=10)
+#scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode='min', factor=0.99, patience=10)
+scheduler = None
 if not os.path.isdir(os.path.join(os.getcwd(), 'models')):
     os.makedirs(os.path.join(os.getcwd(), 'models'))
 
 print('--------start to train--------')
 for epoch in range(epochs):
     model.train()
-    loss0_all = 0
     loss_all = 0
-    loss1_all = 0
-    loss2_all = 0
-    loss3_all = 0
-    loss4_all = 0
-    loss5_all = 0
-    loss6_all = 0
     total = 0
     for idx, (images, targets, path) in enumerate(train_data_loader):
         images = images.to(device)
         targets = targets.to(device)
 
-        d0, d1, d2, d3, d4, d5, d6 = model(images)
-        loss0, loss, loss1, loss2, loss3, loss4, loss5, loss6 = bce_loss_all(d0, d1, d2, d3, d4, d5, d6, targets)
+        out = model(images)
+        loss = bce_loss_all(out, targets)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-        loss0_all += loss0.detach().cpu().numpy() * images.size(0)
         loss_all += loss.detach().cpu().numpy() * images.size(0)
-        loss1_all += loss1.detach().cpu().numpy() * images.size(0)
-        loss2_all += loss2.detach().cpu().numpy() * images.size(0)
-        loss3_all += loss3.detach().cpu().numpy() * images.size(0)
-        loss4_all += loss4.detach().cpu().numpy() * images.size(0)
-        loss5_all += loss5.detach().cpu().numpy() * images.size(0)
-        loss6_all += loss6.detach().cpu().numpy() * images.size(0)
         total += images.size(0)
-    #TODO: SHOW ALL LOSS
     if scheduler is not None:
         scheduler.step(loss_all / total)
-    print('[epoch {}|{}]: loss = {}, loss0 = {}, loss1 = {}, loss2 = {}, loss3 = {}, loss4 = {}, loss5 = {}, loss6 = {}, lr = {}'.format(epoch + 1, epochs, loss_all / total, loss0_all / total, loss1_all / total, loss2_all / total, loss3_all / total, loss4_all / total, loss5_all / total, loss6_all / total, optimizer.state_dict()['param_groups'][0]['lr']))
+    print('[epoch {}|{}]: loss = {}, lr = {}'.format(epoch + 1, epochs, loss_all / total, optimizer.state_dict()['param_groups'][0]['lr']))
     if (epoch + 1) % save_epoch == 0:
-        torch.save(m.state_dict(), 'models/u2net_{}.pth'.format(epoch + 1))
-        folder = os.path.join(os.getcwd(), 'results', 'testing_result_{}'.format(epoch + 1))
+        torch.save(m.state_dict(), 'models/unet_{}.pth'.format(epoch + 1))
+        folder = os.path.join(os.getcwd(), 'results_unet', 'testing_result_{}'.format(epoch + 1))
         if not os.path.isdir(folder):
             os.makedirs(folder)
         model.eval()
@@ -149,6 +124,6 @@ for epoch in range(epochs):
                 images = images.to(device)
                 targets = targets.to(device)
 
-                d0, d1, d2, d3, d4, d5, d6 = model(images)
-                iou_calculation_save(d0, targets, path, folder)
-                save_images(d0, path, folder)
+                out = model(images)
+                iou_calculation_save(out, targets, path, folder)
+                save_images(out, path, folder)
