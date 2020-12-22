@@ -6,5 +6,8 @@ Based on the [PyTorch version](https://github.com/NathanUA/U-2-Net) by NathanUA,
 # U-NET
 An implementation of U-NET ([U-Net: Convolutional Networks for Biomedical Image Segmentation](https://arxiv.org/pdf/1505.04597.pdf)) using PyTorch.
 
-## Application
+# Application
 This implementation is to reproduce the results of human portrait drawing. So we use [APDrawingGAN dataset](https://github.com/yiranran/APDrawingGAN) to train and test.
+
+# Usage
+The models can be downloaded at [this link](https://pan.baidu.com/s/18EKG2vzxJ9a2AujTj6C28w) (extraction code: xdu5).
