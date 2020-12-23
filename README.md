@@ -32,10 +32,10 @@ And if you want to train the model yourself, you can run the ```u2net_train_test
 
 # Results demo
 <p>
-    <img src='demo/img_1695.png' width="49%"/>
+    <img src='demo/img_1695.png' width="49%" />
     <img src='demo/img_1695_mask.png' width="49%"/>
 </p>
 <p>
-    <img src='demo/img_1695_unet.png' width="49%"/>
+    <img src='demo/img_1695_unet.png' width="49%" />
     <img src='demo/img_1695_u2net.png' width="49%"/>
 </p>
