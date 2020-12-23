@@ -22,6 +22,9 @@ opencv 4.0.1
 The pretrained models and the split dataset can be downloaded at [this link](https://pan.baidu.com/s/18EKG2vzxJ9a2AujTj6C28w) (extraction code: ***xdu5***).
 
 First download the dataset, you can use split version provided by us or download the original dataset and use split.py to split. The dataset should under ```./dataset/``` path and split into ```'train_data', 'train_mask', 'test_data', 'test_mask'```. Or you can modify the code yourself.
+
 If you simply want to see the results, download ```results_150.zip``` to see the results after trained for 150 epochs.
+
 For using the pretrained models, please download the models and open ```net_test.py``` and change the name to 'u2net' or 'unet' to load different network respectively. These two models are both trained only 150 epochs.
+
 And if you want to train the model yourself, you can run the ```u2net_train_test.py``` to train 'u2net' or ```unet_train_test.py``` to train 'unet', if you don't have enough GPUs, you can mannualy change the batchsize in the aformentioned files.
