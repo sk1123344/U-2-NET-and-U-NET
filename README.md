@@ -41,6 +41,7 @@ Down: unet's results, u2net's results.
     <img src='demo/img_1695_unet.png' width="49%"/>
     <img src='demo/img_1695_u2net.png' width="49%"/>
 </p>
+
 # Citation
 
 Dataset:
