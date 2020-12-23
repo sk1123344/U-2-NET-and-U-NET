@@ -21,7 +21,7 @@ opencv 4.0.1
 # Usage for portrait generation
 The pretrained models and the split dataset can be downloaded at [this link](https://pan.baidu.com/s/18EKG2vzxJ9a2AujTj6C28w) (extraction code: ***xdu5***).
 
-First download the dataset, you can use split version provided by us or download the original dataset and use split.py to split. The dataset should under ```./dataset/``` path and split into ```'train_data', 'train_mask', 'test_data', 'test_mask'```. Or you can modify the code yourself.
+For the dataset, you can use split version provided by us or download the original dataset and use split.py to split. The dataset should under ```./dataset/``` path and split into ```'train_data', 'train_mask', 'test_data', 'test_mask'```. Or you can modify the code yourself.
 
 If you simply want to see the results, download ```results_150.zip``` to see the results after trained for 150 epochs.
 
