@@ -11,6 +11,7 @@ This implementation is to reproduce the results of human portrait drawing. So we
 
 # Requirement
 We recommand the following version of the library:
+
 Python 3.8
 PyTorch 1.7
 numpy 1.19
