@@ -16,7 +16,7 @@ Python 3.8
 PyTorch 1.7  
 numpy 1.19  
 pandas 1.1  
-opencv 4.0.1  
+python-opencv 4.0.1  
 
 
 # Usage for portrait generation
