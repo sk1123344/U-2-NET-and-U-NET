@@ -34,6 +34,6 @@ for path_ in path:
             img = cv2.imread(filepath)
             w = img.shape[1]
             img_data = img[:, :int(w / 2), :]
-            img_mask = img[:, int(w / 2 + 1):, :]
+            img_mask = img[:, int(w / 2):, :]
             cv2.imwrite(os.path.join(root, image_dir_name, name), img_data)
             cv2.imwrite(os.path.join(root, mask_dir_name, name), img_mask)
