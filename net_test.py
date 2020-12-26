@@ -3,16 +3,24 @@ import cv2
 from unet import UNET
 from u2net import U2NET
 from torch.utils.data import Dataset, DataLoader
+from skimage import io, transform
 import os
 import numpy as np
 import pandas as pd
 
 
+def pred_norm(image_tensor_):
+    image_num = image_tensor_.size(0)
+    image_tensor_ = image_tensor_.clone().detach()
+    image_tensor_ = (image_tensor_ - torch.min(image_tensor_.view(image_num, -1), dim=1)[0]) / (torch.max(image_tensor_.view(image_num, -1), dim=1)[0] - torch.min(image_tensor_.view(image_num, -1), dim=1)[0])
+    return image_tensor_
+
+
 def save_images(image_tensor, mask_path_, save_path):
     image_num = image_tensor.size(0)
-    images_ = torch.round(image_tensor.clone().detach()).permute(0, 2, 3, 1).cpu().numpy() * 255
+    images_ = (pred_norm(image_tensor) * 255).clone().detach().permute(0, 2, 3, 1).cpu().numpy()
     for i in range(image_num):
-        cv2.imwrite(os.path.join(save_path, os.path.basename(mask_path_[i])), cv2.resize(images_[i, :, :, :], dsize=cv2.imread(mask_path_[i]).shape[:2], interpolation=cv2.INTER_NEAREST))
+        cv2.imwrite(os.path.join(save_path, os.path.basename(mask_path_[i])), cv2.resize(images_[i, :, :, :], dsize=(cv2.imread(mask_path_[i]).shape[:2][1], cv2.imread(mask_path_[i]).shape[:2][0]), interpolation=cv2.INTER_LINEAR))
 
 
 def iou_calculation_save(image_tensor, target, mask_path_, save_path):
@@ -35,13 +43,16 @@ class DataInput(Dataset):
     def __init__(self, data_path, mask_path, resize=512, data_postfix='.png', mask_postfix='.png'):
         self.data_path = self.path_list_obtain(data_path, data_postfix)
         self.mask_path = self.path_list_obtain(mask_path, mask_postfix, self.data_path)
-        #print(self.mask_path)
         self.resize = resize
 
     def __getitem__(self, item):
-        image = cv2.resize(cv2.imread(self.data_path[item]) / 255, dsize=(self.resize, self.resize), interpolation=cv2.INTER_LINEAR)
-        target = cv2.resize(cv2.imread(self.mask_path[item])[:, :, 0] / 255, dsize=(self.resize, self.resize), interpolation=cv2.INTER_NEAREST)
-        #print(target.shape)
+        image = transform.resize(io.imread(self.data_path[item])[:, :, :3], (self.resize, self.resize), mode='constant')
+        image = image / np.max(image)
+        target = transform.resize(io.imread(self.mask_path[item])[:, :, 0], (self.resize, self.resize), mode='constant',
+                                  order=0,
+                                  preserve_range=True)
+        target = target / np.max(target)
+        image = (image - np.array([0.485, 0.456, 0.406])) / np.array([0.229, 0.224, 0.225])
         return torch.tensor(image, dtype=torch.float).permute(2, 0, 1), torch.tensor(target, dtype=torch.float).unsqueeze(0), self.mask_path[item]
 
     def __len__(self):
@@ -90,8 +101,8 @@ def results_output(net_name, net_path, data_path, mask_path):
             iou_calculation_save(output[0] if net_name == 'u2net' else output, mask, mask_path, save_path)
 
 
-name = 'unet'
-model_path = 'pretrained_models/{}_150.pth'.format(name)
+name = 'u2net'
+model_path = 'pretrained_models/{}_500.pth'.format(name)
 test_data_path = 'dataset/test_data'
 test_mask_path = 'dataset/test_mask'
 results_output(name, model_path, test_data_path, test_mask_path)

@@ -1,20 +1,26 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+from skimage import io, transform
 import os
 import cv2
 from u2net import U2NET
-from unet import UNET
 import pandas as pd
 import numpy as np
-from torch.utils.data.distributed import DistributedSampler
+
+
+def pred_norm(image_tensor_):
+    image_num = image_tensor_.size(0)
+    image_tensor_ = image_tensor_.clone().detach()
+    image_tensor_ = (image_tensor_ - torch.min(image_tensor_.view(image_num, -1), dim=1)[0]) / (torch.max(image_tensor_.view(image_num, -1), dim=1)[0] - torch.min(image_tensor_.view(image_num, -1), dim=1)[0])
+    return image_tensor_
 
 
 def save_images(image_tensor, mask_path_, save_path):
     image_num = image_tensor.size(0)
-    images_ = torch.round(image_tensor.clone().detach()).permute(0, 2, 3, 1).cpu().numpy() * 255
+    images_ = (pred_norm(image_tensor) * 255).clone().detach().permute(0, 2, 3, 1).cpu().numpy()
     for i in range(image_num):
-        cv2.imwrite(os.path.join(save_path, os.path.basename(mask_path_[i])), cv2.resize(images_[i, :, :, :], dsize=cv2.imread(mask_path_[i]).shape[:2], interpolation=cv2.INTER_NEAREST))
+        cv2.imwrite(os.path.join(save_path, os.path.basename(mask_path_[i])), cv2.resize(images_[i, :, :, :], dsize=(cv2.imread(mask_path_[i]).shape[:2][1], cv2.imread(mask_path_[i]).shape[:2][0]), interpolation=cv2.INTER_LINEAR))
 
 
 def iou_calculation_save(image_tensor, target, mask_path_, save_path):
@@ -55,10 +61,16 @@ class DataInput(Dataset):
         self.resize = resize
 
     def __getitem__(self, item):
-        image = cv2.resize(cv2.imread(self.data_path[item]) / 255, dsize=(self.resize, self.resize), interpolation=cv2.INTER_LINEAR)
-        target = cv2.resize(cv2.imread(self.mask_path[item])[:, :, 0] / 255, dsize=(self.resize, self.resize), interpolation=cv2.INTER_NEAREST)
-        #print(target.shape)
-        return torch.tensor(image, dtype=torch.float).permute(2, 0, 1), torch.tensor(target, dtype=torch.float).unsqueeze(0), self.mask_path[item]
+        image = transform.resize(io.imread(self.data_path[item])[:, :, :3], (self.resize, self.resize), mode='constant')
+        image = image / np.max(image)
+        target = transform.resize(io.imread(self.mask_path[item])[:, :, 0], (self.resize, self.resize), mode='constant',
+                                  order=0,
+                                  preserve_range=True)
+        target = target / np.max(target)
+        image = (image - np.array([0.485, 0.456, 0.406])) / np.array([0.229, 0.224, 0.225])
+        return torch.tensor(image, dtype=torch.float).permute(2, 0, 1), torch.tensor(target,
+                                                                                     dtype=torch.float).unsqueeze(0), \
+               self.mask_path[item]
 
     def __len__(self):
         return len(self.data_path)
@@ -83,9 +95,9 @@ train_mask_path = 'dataset/train_mask'
 test_data_path = 'dataset/test_data'
 test_mask_path = 'dataset/test_mask'
 batch_size = 20
-epochs = 1000
-save_epoch = 10
-num_workers = 2
+epochs = 300
+save_epoch = 25
+num_workers = 4
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 train_data_loader = DataLoader(DataInput(train_data_path, train_mask_path), shuffle=True, num_workers=num_workers, batch_size=batch_size)
@@ -99,7 +111,8 @@ model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters())
 #optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode='min', factor=0.99, patience=10)
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode='min', factor=0.99, patience=10)
+scheduler = None
 if not os.path.isdir(os.path.join(os.getcwd(), 'models')):
     os.makedirs(os.path.join(os.getcwd(), 'models'))
 
